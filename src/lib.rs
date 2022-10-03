@@ -16,8 +16,8 @@ pub struct Customer<'a> {
 #[derive(Debug, Deserialize)]
 pub struct ContractRecord {
     customer_id: String,
-    start_date: String,
-    end_date: String,
+    start_date: NaiveDate,
+    end_date: NaiveDate,
     tcv: f64,
 }
 
