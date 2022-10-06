@@ -1,5 +1,6 @@
 use chrono::naive::NaiveDate;
 use serde::Deserialize;
+use std::cmp::Ordering;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::collections::HashMap;
 
@@ -11,9 +12,45 @@ pub struct Contract {
     acv: f64,
 }
 
-enum ContractEvent<'a> {
-    Start(&'a Contract),
-    End(&'a Contract),
+pub struct ArrEvent<'a> {
+    date: NaiveDate,
+    arr_change: f64,
+    contract: &'a Contract,
+    event_type: ArrEventType,
+}
+
+pub enum ArrEventType {
+    New,
+    Expansion,
+    Downsell,
+    Churn,
+    Renewal,
+}
+
+pub struct CustomerArrEvents<'a> {
+    events: Vec<ArrEvent<'a>>,
+}
+
+impl<'a> CustomerArrEvents<'a> {
+    pub fn new(cust: &'a mut Customer) -> Self {
+        let mut events = vec![];
+        let mut active_contracts = vec![];
+        cust.contracts.sort_unstable();
+        for (i, contract) in cust.contracts.iter().enumerate() {
+            if i == 0 {
+                events.push(ArrEvent {
+                    date: contract.start_date.clone(),
+                    arr_change: contract.acv,
+                    contract: &contract,
+                    event_type: ArrEventType::New,
+                });
+                active_contracts.push(contract);
+                continue;
+            }
+            // Check to see if any active contracts are ending before the start date
+        }
+        CustomerArrEvents { events }
+    }
 }
 
 pub struct Customer {
@@ -86,11 +123,40 @@ impl From<ContractRecord> for Contract {
     }
 }
 
-// impl<'a> Customer<'a> {
-//     pub fn new(id: String) -> Self {
-//         Customer {
-//             id,
-//             contracts: vec![],
-//         }
-//     }
-// }
+impl PartialOrd for Contract {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        let ordering = match self.start_date.cmp(&other.start_date) {
+            Ordering::Greater => Ordering::Greater,
+            Ordering::Less => Ordering::Less,
+            Ordering::Equal => match self.end_date.cmp(&other.end_date) {
+                Ordering::Greater => Ordering::Greater,
+                Ordering::Less => Ordering::Less,
+                Ordering::Equal => match self.tcv.partial_cmp(&other.tcv) {
+                    Some(Ordering::Greater) => Ordering::Greater,
+                    Some(Ordering::Less) => Ordering::Less,
+                    Some(Ordering::Equal) => self.customer_id.cmp(&other.customer_id),
+                    None => return None,
+                },
+            },
+        };
+        Some(ordering)
+    }
+}
+
+impl Ord for Contract {
+    fn cmp(&self, other: &Self) -> Ordering {
+        return self.partial_cmp(other).unwrap();
+    }
+}
+
+impl Eq for Contract {}
+
+impl PartialEq for Contract {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == Ordering::Equal
+    }
+
+    fn ne(&self, other: &Self) -> bool {
+        !self.eq(other)
+    }
+}
