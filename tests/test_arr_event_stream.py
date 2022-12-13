@@ -1,23 +1,33 @@
 from saasy.models import *
 
+
 def test_single_contract():
-    contracts = [Contract("a", date.fromisoformat('2020-01-01'), date.fromisoformat('2020-12-31'), 100)]
+    contracts = [
+        Contract(
+            "a", date.fromisoformat("2020-01-01"), date.fromisoformat("2020-12-31"), 100
+        )
+    ]
     ce_stream = ContractEventStream(contracts)
     ae_stream = ArrEventStream(ce_stream)
 
     expected = [
         ArrEvent(ce_stream[0], ArrEventType.New, 100),
-        ArrEvent(ce_stream[1], ArrEventType.Churn, -100)
+        ArrEvent(ce_stream[1], ArrEventType.Churn, -100),
     ]
 
     actual = list(ae_stream)
 
     assert actual == expected
 
+
 def test_single_renewal():
     contracts = [
-        Contract("a", date.fromisoformat('2020-01-01'), date.fromisoformat('2020-12-31'), 100),
-        Contract("a", date.fromisoformat('2021-01-01'), date.fromisoformat('2021-12-31'), 100),
+        Contract(
+            "a", date.fromisoformat("2020-01-01"), date.fromisoformat("2020-12-31"), 100
+        ),
+        Contract(
+            "a", date.fromisoformat("2021-01-01"), date.fromisoformat("2021-12-31"), 100
+        ),
     ]
     ce_stream = ContractEventStream(contracts)
     ae_stream = ArrEventStream(ce_stream)
@@ -32,10 +42,15 @@ def test_single_renewal():
 
     assert actual == expected
 
+
 def test_single_expansion():
     contracts = [
-        Contract("a", date.fromisoformat('2020-01-01'), date.fromisoformat('2020-12-31'), 100),
-        Contract("a", date.fromisoformat('2021-01-01'), date.fromisoformat('2021-12-31'), 150),
+        Contract(
+            "a", date.fromisoformat("2020-01-01"), date.fromisoformat("2020-12-31"), 100
+        ),
+        Contract(
+            "a", date.fromisoformat("2021-01-01"), date.fromisoformat("2021-12-31"), 150
+        ),
     ]
     ce_stream = ContractEventStream(contracts)
     ae_stream = ArrEventStream(ce_stream)
@@ -51,10 +66,15 @@ def test_single_expansion():
 
     assert actual == expected
 
+
 def test_single_downsell():
     contracts = [
-        Contract("a", date.fromisoformat('2020-01-01'), date.fromisoformat('2020-12-31'), 100),
-        Contract("a", date.fromisoformat('2021-01-01'), date.fromisoformat('2021-12-31'), 75),
+        Contract(
+            "a", date.fromisoformat("2020-01-01"), date.fromisoformat("2020-12-31"), 100
+        ),
+        Contract(
+            "a", date.fromisoformat("2021-01-01"), date.fromisoformat("2021-12-31"), 75
+        ),
     ]
     ce_stream = ContractEventStream(contracts)
     ae_stream = ArrEventStream(ce_stream)
@@ -73,8 +93,12 @@ def test_single_downsell():
 
 def test_new_churn_new():
     contracts = [
-        Contract("a", date.fromisoformat('2020-01-01'), date.fromisoformat('2020-12-31'), 100),
-        Contract("a", date.fromisoformat('2021-06-01'), date.fromisoformat('2022-05-31'), 200),
+        Contract(
+            "a", date.fromisoformat("2020-01-01"), date.fromisoformat("2020-12-31"), 100
+        ),
+        Contract(
+            "a", date.fromisoformat("2021-06-01"), date.fromisoformat("2022-05-31"), 200
+        ),
     ]
     ce_stream = ContractEventStream(contracts)
     ae_stream = ArrEventStream(ce_stream)
@@ -90,10 +114,15 @@ def test_new_churn_new():
 
     assert actual == expected
 
+
 def test_delayed_renewal():
     contracts = [
-        Contract("a", date.fromisoformat('2020-01-01'), date.fromisoformat('2020-12-31'), 100),
-        Contract("a", date.fromisoformat('2021-01-05'), date.fromisoformat('2021-12-31'), 175),
+        Contract(
+            "a", date.fromisoformat("2020-01-01"), date.fromisoformat("2020-12-31"), 100
+        ),
+        Contract(
+            "a", date.fromisoformat("2021-01-05"), date.fromisoformat("2021-12-31"), 175
+        ),
     ]
     ce_stream = ContractEventStream(contracts)
     ae_stream = ArrEventStream(ce_stream)
