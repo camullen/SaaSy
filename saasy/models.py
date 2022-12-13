@@ -216,7 +216,8 @@ class ArrEventStream(Sequence[ArrEvent]):
                     )
 
                 # Indicates a churn
-                # We handle delayed renewals above, but the code assumes that we emit a churn here
+                # We handle delayed renewals above, but the code assumes that we emit a
+                # churn here
                 if new_arr == 0:
                     self.__arr_events.append(
                         ArrEvent(ce, ArrEventType.Churn, -curr_arr)
