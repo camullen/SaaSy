@@ -197,7 +197,11 @@ class ArrEventStream(Sequence[ArrEvent]):
                     curr_arr = new_arr
                     #TODO handle early renewal
 
-                        
+    def __getitem__(self, index: int) -> ArrEvent:
+        return self.__arr_events.__getitem__(index)
+
+    def __len__(self) -> int:
+        return self.__arr_events.__len__()                        
 
                     
 
