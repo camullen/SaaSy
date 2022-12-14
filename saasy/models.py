@@ -121,166 +121,9 @@ MAX_RENEWLAL_GAP_DAYS = 10
 class ArrEventStream(Sequence[ArrEvent]):
     def __init__(self, contract_events: ContractEventStream) -> None:
         self.__arr_events: list[ArrEvent] = []
-        curr_arr = 0
-        for i, ce in enumerate(contract_events):
-            if curr_arr < 0:
-                raise ValueError("Current arr creating ArrEventStream goes negative")
-
-            # Get the previous ARR event if it exists
-            prev_arr_event: ArrEvent | None = (
-                self.__arr_events[-1] if len(self.__arr_events) > 0 else None
-            )
-
-            if ce.event_type == ContractEventType.Start:
-                # This indicates that there was either a previous churn or this is the
-                # first event
-                if curr_arr == 0:
-                    # if no previous ARR events, create a new one
-                    if prev_arr_event is None:
-                        self.__arr_events.append(
-                            ArrEvent(ce, ArrEventType.New, ce.arr_change)
-                        )
-                        curr_arr += ce.arr_change
-
-                    # Check if previous ArrEvent was a churn and decide if this is a
-                    # restart or a renewal
-                    elif prev_arr_event.event_type == ArrEventType.Churn:
-
-                        # Check for renewal event
-                        if within_days(
-                            prev_arr_event.event_date,
-                            ce.event_date,
-                            MAX_RENEWLAL_GAP_DAYS,
-                        ):
-                            # remove the previous churn event and replace with a renewal
-                            # event and possibly an expansion or downsell event
-                            self.__arr_events.pop()
-
-                            # Add the renewal event
-                            self.__arr_events.append(
-                                ArrEvent(ce, ArrEventType.Renewal, 0)
-                            )
-
-                            # additional change to ARR (could be positive or negative)
-                            arr_change = ce.arr_change + prev_arr_event.arr_change
-                            if arr_change < 0:
-                                self.__arr_events.append(
-                                    ArrEvent(ce, ArrEventType.Downsell, arr_change)
-                                )
-
-                            if arr_change > 0:
-                                self.__arr_events.append(
-                                    ArrEvent(ce, ArrEventType.Expansion, arr_change)
-                                )
-
-                            curr_arr = ce.arr_change
-
-                        else:
-                            # this is a restart and the event type should be new
-                            self.__arr_events.append(
-                                ArrEvent(ce, ArrEventType.New, ce.arr_change)
-                            )
-                            curr_arr += ce.arr_change
-
-                    # This would mean that current arr is 0 even after a non-curn event
-                    else:
-                        raise ValueError(
-                            "Current ARR is 0 even after a non-churn event"
-                        )
-
-                # This branch indicates that we have an existing ARR stream and the new
-                # contract should be an expansion
-                else:
-                    if prev_arr_event is None:
-                        raise ValueError(
-                            "No previous arr_event when current_arr is greater than 0"
-                        )
-                    # TODO: handle Downsell -> Gap -> Expansion case
-                    self.__arr_events.append(
-                        ArrEvent(ce, ArrEventType.Expansion, ce.arr_change)
-                    )
-                    curr_arr += ce.arr_change
-
-            # This branch indicates that we're encountering the end of a contract
-            else:
-                if prev_arr_event is None:
-                    raise ValueError(
-                        "Received contract end event and previous ARR event is None"
-                    )
-                if curr_arr == 0:
-                    raise ValueError(
-                        "Recieved contract end event when current ARR is 0"
-                    )
-
-                new_arr = curr_arr + ce.arr_change
-
-                if new_arr < 0:
-                    raise ValueError(
-                        "Received contract end event that drops current arr below 0"
-                    )
-
-                # Indicates a churn
-                # We handle delayed renewals above, but the code assumes that we emit a
-                # churn here
-                if new_arr == 0:
-                    self.__arr_events.append(
-                        ArrEvent(ce, ArrEventType.Churn, -curr_arr)
-                    )
-                    curr_arr = new_arr
-
-                # New arr will be greater than 0, indicating a downsell
-                else:
-                    # Handle early renewal by popping off the previous expansion event
-                    if (
-                        within_days(
-                            prev_arr_event.event_date,
-                            ce.event_date,
-                            MAX_RENEWLAL_GAP_DAYS,
-                        )
-                        and prev_arr_event.event_type == ArrEventType.Expansion
-                    ):
-                        # pop off expansion event
-                        self.__arr_events.pop()
-
-                        # adjust the current arr for the mistaken expansion
-                        curr_arr -= prev_arr_event.arr_change
-
-                        prev_contract_event = prev_arr_event.contract_event
-
-                        # Add the renewal event
-                        self.__arr_events.append(
-                            ArrEvent(prev_contract_event, ArrEventType.Renewal, 0)
-                        )
-
-                        # additional change to ARR (could be positive or negative)
-                        arr_change = prev_contract_event.arr_change - curr_arr
-                        if arr_change < 0:
-                            self.__arr_events.append(
-                                ArrEvent(
-                                    prev_contract_event,
-                                    ArrEventType.Downsell,
-                                    arr_change,
-                                )
-                            )
-
-                        if arr_change > 0:
-                            self.__arr_events.append(
-                                ArrEvent(
-                                    prev_contract_event,
-                                    ArrEventType.Expansion,
-                                    arr_change,
-                                )
-                            )
-
-                        curr_arr += arr_change
-                    else:
-                        self.__arr_events.append(
-                            ArrEvent(ce, ArrEventType.Downsell, ce.arr_change)
-                        )
-                        curr_arr = new_arr
-
-    def __handle_renewal(self):
-        pass
+        self.__curr_arr = 0
+        for ce in contract_events:
+            self.__handle_contract_event(ce)
 
     def __getitem__(self, index: int) -> ArrEvent:
         return self.__arr_events.__getitem__(index)
@@ -288,8 +131,139 @@ class ArrEventStream(Sequence[ArrEvent]):
     def __len__(self) -> int:
         return self.__arr_events.__len__()
 
-        # if ce.event_type == ContractEventType.End and ce.arr_change != 0:
-        #     raise ValueError("Encountered a contract end event when current arr is 0")
+    def __handle_contract_event(self, ce: ContractEvent):
+        if self.__curr_arr < 0:
+            raise ValueError("Current arr creating ArrEventStream goes negative")
+        match ce.event_type:
+            case ContractEventType.Start:
+                self.__handle_start_contract(ce)
+            case ContractEventType.End:
+                self.__handle_end_contract(ce)
+            case _:
+                raise ValueError("Invalid contract event type: ", ce.event_type)
+
+    def __handle_start_contract(self, ce: ContractEvent) -> None:
+        # Handle first contract
+        if self.__is_first_contract():
+            self.__handle_new_arr(ce)
+            return
+
+        # Handle case where previous arr event was a churn
+        if self.__is_prev_event_churn():
+            self.__handle_prev_churn(ce)
+            return
+
+        if self.__curr_arr <= 0:
+            raise ValueError("Current ARR is 0 or less without preceeding churn event")
+
+        self.__handle_expansion(ce)
+
+    def __handle_end_contract(self, ce: ContractEvent):
+        # Ensure that state hasn't been corrupted
+        # check to make sure that there is a previous arr event
+        if self.__get_prev_arr_event() is None:
+            raise ValueError(
+                "Received contract end event and previous ARR event is None"
+            )
+        if self.__curr_arr == 0:
+            raise ValueError("Recieved contract end event when current ARR is 0: ", ce)
+
+        if self.__is_prev_early_renewal(ce):
+            self.__handle_early_renewal(ce)
+            return
+
+        if self.__is_churn(ce):
+            self.__handle_churn(ce)
+            return
+
+        if self.__is_downsell(ce):
+            self.__handle_downsell(ce)
+            return
+
+        raise RuntimeError(
+            "Unexpected state - neither churn, early renewal or downsell on ending contract"
+        )
+
+    def __is_churn(self, ce: ContractEvent) -> bool:
+        return self.__curr_arr + ce.arr_change == 0
+
+    def __is_downsell(self, ce: ContractEvent) -> bool:
+        return self.__curr_arr + ce.arr_change > 0
+
+    def __is_prev_early_renewal(self, ce: ContractEvent) -> bool:
+        return self.__is_contract_continuous(ce)
+
+    def __handle_churn(self, ce: ContractEvent) -> None:
+        self.__arr_events.append(ArrEvent(ce, ArrEventType.Churn, -self.__curr_arr))
+        self.__curr_arr = 0
+
+    def __handle_downsell(self, ce: ContractEvent) -> None:
+        self.__arr_events.append(ArrEvent(ce, ArrEventType.Downsell, ce.arr_change))
+        self.__curr_arr += ce.arr_change
+
+    def __get_prev_arr_event(self) -> ArrEvent | None:
+        if len(self.__arr_events) == 0:
+            return None
+        return self.__arr_events[-1]
+
+    def __is_first_contract(self) -> bool:
+        return self.__get_prev_arr_event() is None
+
+    def __handle_new_arr(self, ce: ContractEvent) -> None:
+        self.__arr_events.append(ArrEvent(ce, ArrEventType.New, ce.arr_change))
+        self.__curr_arr += ce.arr_change
+
+    def __is_prev_event_churn(self) -> bool:
+        prev_arr = self.__get_prev_arr_event()
+        result = prev_arr is not None and prev_arr.event_type == ArrEventType.Churn
+        if result and self.__curr_arr != 0:
+            raise ValueError("Previous event was churn but curr_arr is not 0")
+        return result
+
+    def __handle_prev_churn(self, ce: ContractEvent) -> None:
+        if self.__is_contract_continuous(ce):
+            self.__handle_renewal(ce)
+            return
+        self.__handle_new_arr(ce)
+
+    def __is_contract_continuous(self, ce: ContractEvent) -> bool:
+        prev_arr = self.__get_prev_arr_event()
+
+        return prev_arr is not None and within_days(
+            prev_arr.event_date,
+            ce.event_date,
+            MAX_RENEWLAL_GAP_DAYS,
+        )
+
+    def __handle_renewal(self, ce: ContractEvent) -> None:
+        # Remove previous churn event
+        prev_arr = self.__arr_events.pop()
+        self.__curr_arr -= prev_arr.arr_change
+        next_arr_change = ce.arr_change - self.__curr_arr
+
+        # Append the renewal
+        self.__arr_events.append(ArrEvent(ce, ArrEventType.Renewal, 0))
+
+        # Renewal only
+        if next_arr_change == 0:
+            return
+
+        event_type = (
+            ArrEventType.Downsell if next_arr_change < 0 else ArrEventType.Expansion
+        )
+        self.__arr_events.append(ArrEvent(ce, event_type, next_arr_change))
+
+        self.__curr_arr += next_arr_change
+
+    def __handle_early_renewal(self, ce: ContractEvent) -> None:
+        prev_arr_event = self.__get_prev_arr_event()
+        assert prev_arr_event is not None
+        # Logic is the same for handling the renewal
+        self.__handle_renewal(prev_arr_event.contract_event)
+
+    def __handle_expansion(self, ce: ContractEvent) -> None:
+        self.__arr_events.append(ArrEvent(ce, ArrEventType.Expansion, ce.arr_change))
+        self.__curr_arr += ce.arr_change
 
 
 class Customer:
