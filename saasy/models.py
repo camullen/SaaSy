@@ -115,7 +115,7 @@ class ArrEvent:
         return self.contract_event.event_date
 
 
-MAX_RENEWLAL_GAP_DAYS = 10
+MAX_RENEWAL_GAP_DAYS = 10
 
 
 class ArrEventStream(Sequence[ArrEvent]):
@@ -232,7 +232,7 @@ class ArrEventStream(Sequence[ArrEvent]):
         return prev_arr is not None and within_days(
             prev_arr.event_date,
             ce.event_date,
-            MAX_RENEWLAL_GAP_DAYS,
+            MAX_RENEWAL_GAP_DAYS,
         )
 
     def __handle_renewal(self, ce: ContractEvent) -> None:
