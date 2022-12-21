@@ -26,3 +26,7 @@ export function within_days(a: Date, b: Date, days: number): boolean {
   const max_diff = Math.round(days) * DAY;
   return milli_diff <= max_diff;
 }
+
+export function add_days(d: Date, days: number): Date {
+  return new Date(d.valueOf() + days * DAY);
+}

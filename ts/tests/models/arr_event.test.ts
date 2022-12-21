@@ -10,16 +10,12 @@ import {
   ContractEventType,
 } from "../../src/models/contract_event";
 
+// @ts-ignore
+import ContractTestCases from "./contract_test_cases";
+
 describe("create_arr_events", () => {
   test("single contract", () => {
-    const contracts = [
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2020-01-01"),
-        end_date: new Date("2020-12-31"),
-        tcv: 100,
-      }),
-    ];
+    const contracts = ContractTestCases.single_contract;
 
     const expected = [
       new ArrEvent({
@@ -44,20 +40,7 @@ describe("create_arr_events", () => {
   });
 
   test("single renewal", () => {
-    const contracts = [
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2020-01-01"),
-        end_date: new Date("2020-12-31"),
-        tcv: 100,
-      }),
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2021-01-01"),
-        end_date: new Date("2021-12-31"),
-        tcv: 100,
-      }),
-    ];
+    const contracts = ContractTestCases.single_renewal;
 
     const expected = [
       new ArrEvent({
@@ -93,20 +76,7 @@ describe("create_arr_events", () => {
   });
 
   test("single expansion", () => {
-    const contracts = [
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2020-01-01"),
-        end_date: new Date("2020-12-31"),
-        tcv: 100,
-      }),
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2021-01-01"),
-        end_date: new Date("2021-12-31"),
-        tcv: 150,
-      }),
-    ];
+    const contracts = ContractTestCases.single_expansion;
 
     const expected = [
       new ArrEvent({
@@ -149,20 +119,7 @@ describe("create_arr_events", () => {
   });
 
   test("single downsell", () => {
-    const contracts = [
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2020-01-01"),
-        end_date: new Date("2020-12-31"),
-        tcv: 100,
-      }),
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2021-01-01"),
-        end_date: new Date("2021-12-31"),
-        tcv: 75,
-      }),
-    ];
+    const contracts = ContractTestCases.single_downsell;
 
     const expected = [
       new ArrEvent({
@@ -204,21 +161,8 @@ describe("create_arr_events", () => {
     expect(actual).toEqual(expected);
   });
 
-  test("single new -> churn -> new", () => {
-    const contracts = [
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2020-01-01"),
-        end_date: new Date("2020-12-31"),
-        tcv: 100,
-      }),
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2021-06-01"),
-        end_date: new Date("2022-05-31"),
-        tcv: 200,
-      }),
-    ];
+  test("new -> churn -> new", () => {
+    const contracts = ContractTestCases.new_churn_new;
 
     const expected = [
       new ArrEvent({
@@ -261,20 +205,7 @@ describe("create_arr_events", () => {
   });
 
   test("delayed renewal", () => {
-    const contracts = [
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2020-01-01"),
-        end_date: new Date("2020-12-31"),
-        tcv: 100,
-      }),
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2021-01-05"),
-        end_date: new Date("2021-12-31"),
-        tcv: 100,
-      }),
-    ];
+    const contracts = ContractTestCases.delayed_renewal;
 
     const expected = [
       new ArrEvent({
@@ -310,20 +241,7 @@ describe("create_arr_events", () => {
   });
 
   test("delayed expansion", () => {
-    const contracts = [
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2020-01-01"),
-        end_date: new Date("2020-12-31"),
-        tcv: 100,
-      }),
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2021-01-05"),
-        end_date: new Date("2021-12-31"),
-        tcv: 150,
-      }),
-    ];
+    const contracts = ContractTestCases.delayed_expansion;
 
     const expected = [
       new ArrEvent({
@@ -366,20 +284,7 @@ describe("create_arr_events", () => {
   });
 
   test("delayed downsell", () => {
-    const contracts = [
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2020-01-01"),
-        end_date: new Date("2020-12-31"),
-        tcv: 100,
-      }),
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2021-01-05"),
-        end_date: new Date("2021-12-31"),
-        tcv: 75,
-      }),
-    ];
+    const contracts = ContractTestCases.delayed_downsell;
 
     const expected = [
       new ArrEvent({
@@ -422,20 +327,7 @@ describe("create_arr_events", () => {
   });
 
   test("early renewal", () => {
-    const contracts = [
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2020-01-01"),
-        end_date: new Date("2020-12-31"),
-        tcv: 100,
-      }),
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2020-12-30"),
-        end_date: new Date("2021-12-31"),
-        tcv: 100,
-      }),
-    ];
+    const contracts = ContractTestCases.early_renewal;
 
     const expected = [
       new ArrEvent({
@@ -471,20 +363,7 @@ describe("create_arr_events", () => {
   });
 
   test("early expansion", () => {
-    const contracts = [
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2020-01-01"),
-        end_date: new Date("2020-12-31"),
-        tcv: 100,
-      }),
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2020-12-30"),
-        end_date: new Date("2021-12-31"),
-        tcv: 150,
-      }),
-    ];
+    const contracts = ContractTestCases.early_expansion;
 
     const expected = [
       new ArrEvent({
@@ -527,20 +406,7 @@ describe("create_arr_events", () => {
   });
 
   test("early downsell", () => {
-    const contracts = [
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2020-01-01"),
-        end_date: new Date("2020-12-31"),
-        tcv: 100,
-      }),
-      new Contract({
-        customer_id: "a",
-        start_date: new Date("2020-12-30"),
-        end_date: new Date("2021-12-31"),
-        tcv: 75,
-      }),
-    ];
+    const contracts = ContractTestCases.early_downsell;
 
     const expected = [
       new ArrEvent({
