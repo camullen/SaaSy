@@ -1,10 +1,14 @@
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import date, timedelta
 from enum import Enum, auto
 from functools import total_ordering
-from typing import Self
-from collections.abc import Sequence, Iterable
+from typing import Self, Iterator
+
+import portion as P
 from dateutil.utils import within_delta
+
+# TODO: update all classes to use __slots__
 
 
 @dataclass
@@ -264,6 +268,83 @@ class ArrEventStream(Sequence[ArrEvent]):
     def __handle_expansion(self, ce: ContractEvent) -> None:
         self.__arr_events.append(ArrEvent(ce, ArrEventType.Expansion, ce.arr_change))
         self.__curr_arr += ce.arr_change
+
+
+@dataclass
+class ArrInterval:
+    date_interval: P.Interval
+    arr: float
+
+    def __contains__(self, d: date) -> bool:
+        return d in self.date_interval
+
+
+class ArrIntervalTimeline:
+
+    __slots__ = "__interval_list"
+
+    def __init__(self, ae_stream: ArrEventStream):
+        self.__interval_list: list[ArrInterval] = list()
+        self.__add_arr_event_stream(ae_stream)
+
+    def __add_arr_event_stream(self, ae_stream: ArrEventStream) -> None:
+        curr = None
+        for next in ae_stream:
+            self.__add_arr_event_pair(curr, next)
+            curr = next
+        self.__add_arr_event_pair(curr, None)
+
+    def __add_arr_event_pair(
+        self, curr: ArrEvent | None, next: ArrEvent | None
+    ) -> None:
+        if curr is None:
+            if next is None:
+                raise ValueError("both curr and next cannot be None")
+            self.__interval_list.append(ArrInterval(P.open(-P.inf, next.event_date), 0))
+        elif next is None:
+            if curr is None:
+                raise ValueError("both curr and next cannot be None")
+            # change last interval to be fully closed
+            last_interval = self.__interval_list[-1]
+            last_interval.date_interval = last_interval.date_interval.replace(
+                right=P.CLOSED
+            )
+
+            self.__interval_list.append(ArrInterval(P.open(curr.event_date, P.inf), 0))
+        elif curr.event_type is ArrEventType.Renewal:
+            if next.event_type not in [ArrEventType.Expansion, ArrEventType.Downsell]:
+                # If we get a renewal event without a following expansion or downsell
+                # we extend the existing interval
+                curr_interval = self.__interval_list[-1]
+                if curr_interval is None:
+                    raise RuntimeError(
+                        "current interval should not be None with a 0 ARR change"
+                    )
+                curr_interval.date_interval = curr_interval.date_interval.replace(
+                    upper=next.event_date
+                )
+            else:
+                # Do nothing for a renewal followed by an expansion or downsell
+                pass
+        else:
+            last_interval = self.__interval_list[-1]
+            new_arr = last_interval.arr + curr.arr_change
+            # while contracs are usually fully closed intervals, the way we've
+            # built the ArrEventStream means that these need to be
+
+            # TODO: Fix
+            self.__interval_list.append(
+                ArrInterval(P.closed(curr.event_date, next.event_date - 1), new_arr)
+            )
+
+    def __getitem__(self, d: date) -> ArrInterval:
+        for interval in self.__interval_list:
+            if d in interval:
+                return interval
+        raise KeyError(d)
+
+    def __iter__(self) -> Iterator[ArrInterval]:
+        return self.__interval_list.__iter__()
 
 
 class Customer:
