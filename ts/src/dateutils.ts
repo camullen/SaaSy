@@ -11,6 +11,6 @@ export function yearfrac(a: Date, b: Date, decimals: number = 1, absolute: boole
 }
 
 export function mround(a: number, decimals: number): number {
-    const factor = 10 ^ Math.trunc(decimals);
+    const factor = Math.pow(10, Math.trunc(decimals));
     return Math.round(a * factor) / factor;
 }
