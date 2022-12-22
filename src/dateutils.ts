@@ -77,7 +77,10 @@ function create_monthly_periods(range: DateRange): Period[] {
     periods.push({
       start: new Date(d.valueOf()),
       end: end_of_month(d),
-      label: d.toLocaleDateString("en-us", { year: "numeric", month: "short" }),
+      label: end_of_month(d).toLocaleDateString("en-us", {
+        year: "numeric",
+        month: "short",
+      }),
       periodicity: Periodicity.Monthly,
     });
   }
@@ -111,16 +114,29 @@ function create_quarterly_periods(range: DateRange): Period[] {
     d <= max_quarter;
     increment_month(d, 3)
   ) {
-    periods.push(
+    periods.push({
       start: new Date(d.valueOf()),
-      end: 
-    )
+      end: end_of_quarter(d),
+      periodicity: Periodicity.Quarterly,
+      label: get_quarter_label(d),
+    });
   }
+  return periods;
+}
+
+function get_quarter_label(d: Date): string {
+  const quarter_1_indexed = get_quarter(d) + 1;
+  const year = d.getUTCFullYear();
+  return `Q${quarter_1_indexed} ${year}`;
+}
+
+function get_quarter(d: Date): number {
+  return Math.floor(d.getUTCMonth() / 3);
 }
 
 function get_quarter_start(d: Date): Date {
   // 0 indexed quarter
-  const quarter = Math.floor(d.getUTCMonth());
+  const quarter = get_quarter(d);
   const month = quarter * 3;
   return new Date(Date.UTC(d.getUTCFullYear(), month, 1));
 }
@@ -129,7 +145,7 @@ function create_yearly_periods(range: DateRange): Period[] {
   const min_year = range.min.getUTCFullYear();
   const max_year = range.max.getUTCFullYear();
   const periods: Period[] = [];
-  for (let year = min_year; year < max_year; year++) {
+  for (let year = min_year; year <= max_year; year++) {
     periods.push({
       start: new Date(Date.UTC(year, 0, 1, 0, 0, 0)),
       end: new Date(Date.UTC(year + 1, 0, 0, 0, 0, 0)),
