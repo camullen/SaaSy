@@ -39,7 +39,7 @@ export class ArrEvent {
 }
 
 export function create_arr_events(
-  contracts: Contract[]
+  contracts: ReadonlyArray<Contract>
 ): ReadonlyArray<ArrEvent> {
   const contract_events = create_contract_events(contracts);
   return new ArrEventArrayBuilder().build_array(contract_events);
