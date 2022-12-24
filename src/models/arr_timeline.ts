@@ -89,6 +89,13 @@ export default class ArrTimeline {
     this.add_arr_event_pair(curr, undefined);
   }
 
+  public get_arr_at_date(d: Date): number {
+    for (let interval of this.interval_array) {
+      if (interval.containsDate(d)) return interval.arr;
+    }
+    throw new Error("Discontinuous ARR timeline");
+  }
+
   public get_array(): ReadonlyArray<ArrInterval> {
     return this.interval_array;
   }
